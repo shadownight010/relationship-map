@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>關係動力地圖</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
+  :root{
+    --bg:#16130f; --bg-soft:#1f1b15; --surface:#262019; --surface-hi:#2f281f;
+    --line:#3a3128; --text:#ece3d4; --text-dim:#9a8f7d; --text-faint:#6b6253;
+    --gold:#cda85e; --gold-soft:#8f7642; --rose:#cf9090; --rose-soft:#8a5b5b;
+    --c-rare:linear-gradient(135deg,#cda85e,#9dc47e); --c-complex:#7d94c4;
+    --c-neutral:#6b8a8a; --c-pain:#b5614e; --c-storm:#c77a52; --c-block:#5a5048;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);background-image:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(205,168,94,0.08),transparent),radial-gradient(ellipse 60% 40% at 80% 110%,rgba(207,144,144,0.05),transparent);color:var(--text);font-family:'Noto Sans TC',sans-serif;line-height:1.8;overflow-x:hidden}
+  .wrap{max-width:980px;margin:0 auto;padding:0 24px}
+  body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");pointer-events:none;z-index:9999;opacity:0.5}
+  .hero{min-height:92vh;display:flex;flex-direction:column;justify-content:center;padding:80px 24px;max-width:920px;margin:0 auto;position:relative}
+  .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.4em;text-transform:uppercase;color:var(--gold-soft);margin-bottom:32px;opacity:0;animation:rise 1s 0.1s forwards}
+  .hero h1{font-family:'Noto Serif TC',serif;font-weight:900;font-size:clamp(38px,8vw,74px);line-height:1.15;letter-spacing:0.02em;margin-bottom:36px;opacity:0;animation:rise 1s 0.25s forwards}
+  .hero h1 .accent{color:var(--gold);font-style:italic}
+  .hero .lede{font-size:clamp(17px,2.4vw,22px);color:var(--text-dim);max-width:640px;font-weight:300;opacity:0;animation:rise 1s 0.45s forwards}
+  .hero .lede strong{color:var(--text);font-weight:500}
+  .scroll-hint{position:absolute;bottom:40px;left:24px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.3em;color:var(--text-faint);text-transform:uppercase;opacity:0;animation:rise 1s 0.8s forwards}
+  .scroll-hint::after{content:'↓';display:block;margin-top:8px;font-size:16px;animation:bob 2s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+  @keyframes rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  section{padding:88px 0;position:relative}
+  .sec-num{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.3em;color:var(--gold-soft);margin-bottom:14px}
+  .sec-title{font-family:'Noto Serif TC',serif;font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.25;margin-bottom:20px}
+  .sec-intro{font-size:17px;color:var(--text-dim);max-width:660px;font-weight:300;margin-bottom:48px}
+  .sec-intro strong{color:var(--text);font-weight:500}
+  .divider{height:1px;border:none;max-width:980px;margin:0 auto;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .reveal{opacity:0;transform:translateY(30px);transition:opacity .9s ease,transform .9s ease}
+  .reveal.in{opacity:1;transform:translateY(0)}
+  /* polarity */
+  .pol{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:stretch;margin-bottom:30px}
+  @media(max-width:680px){.pol{grid-template-columns:1fr;}}
+  .pol-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px 26px}
+  .pol-card.m{border-top:3px solid var(--gold)}
+  .pol-card.f{border-top:3px solid var(--rose)}
+  .pol-card .pc-h{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;margin-bottom:10px}
+  .pol-card.m .pc-h{color:var(--gold)} .pol-card.f .pc-h{color:var(--rose)}
+  .pol-card h3{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:500;margin-bottom:14px}
+  .pol-card ul{list-style:none;font-size:14.5px;color:var(--text-dim)}
+  .pol-card li{padding:4px 0 4px 16px;position:relative}
+  .pol-card li::before{content:'·';position:absolute;left:2px;color:var(--gold-soft)}
+  .pol-mid{display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;color:var(--text-faint);writing-mode:vertical-rl;letter-spacing:0.2em}
+  @media(max-width:680px){.pol-mid{writing-mode:horizontal-tb;padding:8px}}
+  .pol-law{background:linear-gradient(135deg,rgba(205,168,94,0.08),rgba(207,144,144,0.06));border:1px solid var(--gold-soft);border-radius:12px;padding:22px 26px;font-size:16px}
+  .pol-law strong{color:var(--gold)}
+  /* dimensions */
+  .dim-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-bottom:36px}
+  @media(max-width:720px){.dim-grid{grid-template-columns:1fr}}
+  .dim-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:30px 28px}
+  .dim-card .axis-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:0.25em;color:var(--text-faint);text-transform:uppercase;margin-bottom:16px}
+  .dim-card h3{font-family:'Noto Serif TC',serif;font-size:21px;font-weight:500;margin-bottom:20px}
+  .layer-item{display:flex;gap:14px;padding:14px 0;border-top:1px solid var(--line);align-items:baseline}
+  .layer-item:first-child{border-top:none}
+  .layer-item .lnum{font-family:'Space Mono',monospace;font-size:13px;color:var(--gold);flex-shrink:0}
+  .layer-item .lt{font-weight:700;font-size:15.5px;margin-bottom:2px}
+  .layer-item .ld{color:var(--text-dim);font-size:14px}
+  .layer-item .lcore{color:var(--text-faint);font-size:12.5px;font-style:italic;margin-top:3px}
+  .spectrum{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+  .spectrum .pole{flex:1;text-align:center} .spectrum .pole .nm{font-weight:700;font-size:15px} .spectrum .pole .nm.l{color:var(--rose)} .spectrum .pole .nm.r{color:var(--gold)}
+  .spectrum .bar{flex:1.6;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--rose-soft),var(--gold))}
+  .dim-card .rowx{margin-bottom:12px;font-size:14.5px;color:var(--text-dim)} .dim-card .rowx b{color:var(--gold);font-weight:500}
+  /* glossary */
+  .gloss-tabs{display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap}
+  .gtab{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;padding:9px 18px;border-radius:999px;cursor:pointer;border:1px solid var(--line);color:var(--text-dim);background:transparent;transition:all .25s}
+  .gtab:hover{color:var(--text);border-color:var(--gold-soft)}
+  .gtab.active{background:var(--gold);color:#1a1510;border-color:var(--gold);font-weight:700}
+  .card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  @media(max-width:720px){.card-grid{grid-template-columns:1fr}}
+  .term-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:24px 24px 22px;cursor:pointer;position:relative;transition:transform .3s,border-color .3s,background .3s}
+  .term-card:hover{transform:translateY(-4px);border-color:var(--gold-soft);background:var(--surface-hi)}
+  .term-card .tag{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;padding:3px 9px;border-radius:5px;display:inline-block;margin-bottom:12px}
+  .tag.compress{background:rgba(181,97,78,0.15);color:#cf8a76} .tag.partial{background:rgba(199,154,82,0.15);color:var(--gold)} .tag.integrate{background:rgba(157,196,126,0.15);color:#9dc47e}
+  .term-card h4{font-family:'Noto Serif TC',serif;font-size:22px;font-weight:700;margin-bottom:2px}
+  .term-card .en{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-faint);letter-spacing:0.1em;margin-bottom:6px}
+  .term-card .src{font-size:11px;color:var(--gold-soft);margin-bottom:13px}
+  .term-card .oneliner{color:var(--text-dim);font-size:14.5px;margin-bottom:12px}
+  .term-card .detail{display:none}
+  .term-card.open .detail{display:block;animation:fade .4s}
+  .term-card .detail .blk{margin-top:13px}
+  .term-card .detail .lbl{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:0.15em;color:var(--gold);text-transform:uppercase;margin-bottom:4px}
+  .term-card .detail .txt{font-size:14px;color:var(--text)}
+  .term-card .expand{position:absolute;top:22px;right:22px;color:var(--text-faint);font-size:20px;transition:transform .3s;font-family:'Space Mono',monospace}
+  .term-card.open .expand{transform:rotate(45deg);color:var(--gold)}
+  /* quiz */
+  .quiz{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:38px 34px}
+  @media(max-width:560px){.quiz{padding:28px 20px}}
+  .q-block{margin-bottom:32px}
+  .q-block .q{font-family:'Noto Serif TC',serif;font-size:19px;font-weight:500;margin-bottom:16px;line-height:1.5}
+  .q-block .q .qn{font-family:'Space Mono',monospace;font-size:13px;color:var(--gold-soft);margin-right:12px}
+  .opt{display:block;width:100%;text-align:left;cursor:pointer;background:var(--bg-soft);border:1px solid var(--line);border-radius:10px;padding:14px 17px;margin-bottom:10px;color:var(--text-dim);font-family:inherit;font-size:14.5px;transition:all .22s;line-height:1.5}
+  .opt:hover{border-color:var(--gold-soft);color:var(--text)}
+  .opt.picked{border-color:var(--gold);background:rgba(205,168,94,0.08);color:var(--text)}
+  .opt .res{display:none;margin-top:9px;padding-top:9px;border-top:1px dashed var(--line);font-size:13px;color:var(--gold)}
+  .opt.picked .res{display:block}
+  .calc-btn{width:100%;margin-top:8px;padding:16px;border-radius:10px;border:1px solid var(--gold-soft);background:rgba(205,168,94,0.08);color:var(--text-dim);font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;transition:all .25s;letter-spacing:0.05em}
+  .calc-btn:hover:not(:disabled){background:var(--gold);color:#1a1510;border-color:var(--gold)}
+  .calc-btn:disabled{opacity:0.4;cursor:not-allowed}
+  .verdict{margin-top:28px;padding:24px;border-radius:12px;background:linear-gradient(135deg,rgba(205,168,94,0.1),rgba(207,144,144,0.06));border:1px solid var(--gold-soft);display:none}
+  .verdict.show{display:block;animation:rise .6s}
+  .verdict .vh{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.2em;color:var(--gold);text-transform:uppercase;margin-bottom:10px}
+  .verdict .vt{font-size:15px;color:var(--text)} .verdict .vt strong{color:var(--gold)}
+  /* matrix */
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-bottom:26px}
+  .legend .li{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text-dim)}
+  .legend .sw{width:14px;height:14px;border-radius:4px}
+  .sw.rare{background:var(--c-rare)} .sw.complex{background:var(--c-complex)} .sw.neutral{background:var(--c-neutral)} .sw.pain{background:var(--c-pain)} .sw.storm{background:var(--c-storm)} .sw.block{background:var(--c-block)}
+  .matrix-scroll{overflow-x:auto;padding-bottom:12px;margin:0 -24px;padding-left:24px;padding-right:24px}
+  .matrix{border-collapse:separate;border-spacing:5px;margin:0 auto}
+  .matrix th{font-family:'Space Mono',monospace;font-size:11px;font-weight:400;color:var(--text-dim);padding:6px;white-space:nowrap}
+  .matrix th.col{writing-mode:vertical-rl;text-orientation:mixed;height:96px;vertical-align:bottom}
+  .matrix th.corner{font-size:10px;color:var(--text-faint)}
+  .matrix th.rowh{text-align:right;padding-right:12px}
+  .matrix td{width:48px;height:48px;border-radius:7px;cursor:pointer;transition:transform .18s,box-shadow .18s;position:relative}
+  .matrix td:hover{transform:scale(1.16);z-index:5;box-shadow:0 6px 20px rgba(0,0,0,0.5)}
+  .cell.rare{background:var(--c-rare)} .cell.complex{background:rgba(125,148,196,0.5)} .cell.neutral{background:rgba(107,138,138,0.45)} .cell.pain{background:rgba(181,97,78,0.5)} .cell.storm{background:rgba(199,122,82,0.5)} .cell.block{background:rgba(90,80,72,0.6)}
+  .matrix-note{font-size:13px;color:var(--text-faint);margin-top:18px;text-align:center;font-style:italic}
+  .modal-bg{position:fixed;inset:0;background:rgba(10,8,5,0.78);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:100;padding:24px}
+  .modal-bg.show{display:flex;animation:fade .25s}
+  .modal{background:var(--surface-hi);border:1px solid var(--gold-soft);border-radius:16px;max-width:480px;width:100%;padding:34px 32px;position:relative;animation:rise .4s}
+  .modal .close{position:absolute;top:18px;right:20px;cursor:pointer;color:var(--text-faint);font-size:24px;line-height:1;background:none;border:none;font-family:inherit}
+  .modal .close:hover{color:var(--text)}
+  .modal .m-pair{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:0.12em;color:var(--gold);text-transform:uppercase;margin-bottom:8px}
+  .modal .m-label{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:700;margin-bottom:14px}
+  .modal .m-body{color:var(--text-dim);font-size:15px;line-height:1.75}
+  footer{padding:70px 24px 90px;text-align:center}
+  footer .fq{font-family:'Noto Serif TC',serif;font-style:italic;font-size:clamp(20px,3.5vw,28px);color:var(--gold);max-width:600px;margin:0 auto 18px;line-height:1.5}
+  footer .fs{color:var(--text-faint);font-size:14px}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="eyebrow">關係動力地圖 · The Map</div>
+  <h1>兩個人相遇,<br>會發生<span class="accent">什麼</span></h1>
+  <p class="lede">這不是性格測驗。它描述的是——當真實的你站在另一個人面前,<strong>你藏起來,還是出現?</strong>而你們各自的能量相遇時,會點燃,還是慢慢熄滅。</p>
+  <div class="scroll-hint">往下走</div>
+</div>
+<hr class="divider">
+
+<section><div class="wrap reveal">
+  <div class="sec-num">01 — 引擎</div>
+  <h2 class="sec-title">先理解吸引力從哪裡來</h2>
+  <p class="sec-intro">在認識任何類型之前,要先懂一件事:吸引力的根源是<strong>極性</strong>——陰陽能量之間的張力。這是整張地圖的引擎。每個人身上都有兩種能量,跟性別無關。</p>
+  <div class="pol">
+    <div class="pol-card m">
+      <div class="pc-h">陽性能量 · Masculine</div>
+      <h3>意識</h3>
+      <ul><li>穩定,有方向,不被外在帶走</li><li>完全在當下,不需要確認</li><li>是容器——裝得下所有的流動</li><li>最高表達:在完全的在場中,給出意識和愛</li></ul>
+    </div>
+    <div class="pol-mid">＋ 張力 ＋</div>
+    <div class="pol-card f">
+      <div class="pc-h">陰性能量 · Feminine</div>
+      <h3>流動</h3>
+      <ul><li>變化,真實,完全活在感受裡</li><li>不壓抑,不管理,讓能量自由流過</li><li>是光——帶來喜悅、美和生命力</li><li>最高表達:在完全的流動中,充滿愛</li></ul>
+    </div>
+  </div>
+  <div class="pol-law"><strong>極性的定律:</strong>陰陽之間的差距越大,吸引力越強。差距消失,吸引力消失。這就是為什麼兩個都壓縮自己的人在一起,沒有火花——不是不愛,是極性不見了。</div>
+</div></section>
+<hr class="divider">
+
+<section><div class="wrap reveal">
+  <div class="sec-num">02 — 兩個維度</div>
+  <h2 class="sec-title">地圖的橫軸與縱軸</h2>
+  <p class="sec-intro">每個人在地圖上的位置,由兩條線決定:你<strong>藏還是不藏</strong>(整合程度),以及你的存在感<strong>從哪裡來</strong>(發展層次)。</p>
+  <div class="dim-grid">
+    <div class="dim-card">
+      <div class="axis-label">橫軸 · 整合程度</div>
+      <h3>壓縮 → 整合</h3>
+      <div class="spectrum"><div class="pole"><div class="nm l">壓縮</div></div><div class="bar"></div><div class="pole"><div class="nm r">整合</div></div></div>
+      <div class="rowx"><b>壓縮</b> — 把真實的自己藏起來保護自己:討好、控制、麻木、或依賴。陽性或陰性被壓下去了。</div>
+      <div class="rowx"><b>整合</b> — 真實的自己出現,能流動也能穩住。不需要藏,也不會被帶走。</div>
+    </div>
+    <div class="dim-card">
+      <div class="axis-label">縱軸 · 存在感從哪裡來</div>
+      <h3>沿著壓縮 → 整合</h3>
+      <div class="layer-item"><div class="lnum">壓縮端</div><div><div class="lt">來自外在</div><div class="ld">存在感放在關係、認可、被接受上——外在穩了,我才安全。</div><div class="lcore">藏起真實來換取安全</div></div></div>
+      <div class="layer-item"><div class="lnum">中間</div><div><div class="lt">來自成就</div><div class="ld">建立了自我,但存在感綁在「我完成了什麼」上。</div><div class="lcore">有中心,但還有一面關著</div></div></div>
+      <div class="layer-item"><div class="lnum">整合端</div><div><div class="lt">來自內在</div><div class="ld">我就是我,不需要確認——從這裡,真實能自然給出。</div><div class="lcore">不需要藏,也不會被帶走</div></div></div>
+    </div>
+  </div>
+  <p class="sec-intro" style="margin-bottom:0;max-width:700px">兩件重要的事:這個位置移動<strong>很慢</strong>,要真正的成長工作。而下一段那些「模式」移動<strong>比較快</strong>——同一個人可以在事業上很整合,在親密關係裡退回壓縮端。</p>
+</div></section>
+<hr class="divider">
+
+<section><div class="wrap reveal">
+  <div class="sec-num">03 — 六種人</div>
+  <h2 class="sec-title">地圖上的人,長什麼樣子</h2>
+  <p class="sec-intro">六個類型,不是標籤,是模式。三個來自 Deida(依賴/獨立/禮物→整合)、一個來自 Glover(Nice Guy)、兩個來自依附理論(反應≈焦慮、麻木≈逃避)。點開每張卡看核心動力。先選一邊。</p>
+  <div class="gloss-tabs">
+    <button class="gtab active" data-side="male">男性模式</button>
+    <button class="gtab" data-side="female">女性模式</button>
+  </div>
+  <div class="card-grid" id="cardGrid"></div>
+</div></section>
+<hr class="divider">
+
+<section><div class="wrap reveal">
+  <div class="sec-num">04 — 自我定位</div>
+  <h2 class="sec-title">那,你在哪裡?</h2>
+  <p class="sec-intro">光看定義,人不知道自己在地圖哪一格。這幾個問題不是測驗,是鏡子。誠實回答,看自己最常落在哪裡。</p>
+  <div class="quiz" id="quiz"></div>
+</div></section>
+<hr class="divider">
+
+<section><div class="wrap reveal">
+  <div class="sec-num">05 — 組合</div>
+  <h2 class="sec-title">兩個人相遇的 36 種動力</h2>
+  <p class="sec-intro">知道兩個人各自在哪裡,就能大概預測這段關係的走向。橫排是男性模式,直列是女性模式。點任一格看詳細動力。</p>
+  <div class="legend">
+    <div class="li"><span class="sw rare"></span>稀有深度</div>
+    <div class="li"><span class="sw complex"></span>複雜・有轉化可能</div>
+    <div class="li"><span class="sw neutral"></span>中性・平行</div>
+    <div class="li"><span class="sw storm"></span>強烈・不穩定</div>
+    <div class="li"><span class="sw pain"></span>容易痛苦</div>
+    <div class="li"><span class="sw block"></span>靠不進去</div>
+  </div>
+  <div class="matrix-scroll"><table class="matrix" id="matrix"></table></div>
+  <p class="matrix-note">組合不需要全部記。重要的是——你越往整合走,你身邊那一格就跟著移動。</p>
+</div></section>
+<hr class="divider">
+
+<footer class="reveal">
+  <p class="fq">「真實的我出現,會被接受——<br>然後我學會了,怎麼活在那份連結裡。」</p>
+  <p class="fs">這張地圖會動。你動,它就動。</p>
+</footer>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <button class="close" id="modalClose">×</button>
+    <div class="m-pair" id="modalPair"></div>
+    <div class="m-label" id="modalLabel"></div>
+    <div class="m-body" id="modalBody"></div>
+  </div>
+</div>
+<script>
+// ===== TYPE DEFINITIONS (grounded as audited) =====
+const TYPES_MALE = [
+  { key:'整合', name:'整合男性', en:'Integrated', src:'Deida 禮物型 + Glover 整合', tag:'integrate',
+    one:'真實出現，能流動也能穩住。行動從意圖出發，不為結果。',
+    core:'我出現、我給出，因為那是我的禮物——不為了得到什麼。',
+    daily:'帶著恐懼還是說真的；裝得下自己和她的情緒；在當下，有方向，能說不。' },
+  { key:'獨立', name:'獨立型男', en:'Independent', src:'Deida 第二層', tag:'partial',
+    one:'建立了自我，有目標和方向，但活在「我要完成什麼」裡。',
+    core:'我靠自己，我有我要達成的事。',
+    daily:'有能力有方向；但把陰性（感受、連結）關起來；難讓人真正進來。' },
+  { key:'依賴', name:'依賴型男', en:'Dependent', src:'Deida 第一層', tag:'compress',
+    one:'幸福取決於外在——工作、錢、女人的認可。被外在定義。',
+    core:'只要她認可我、只要外在穩了，我才安全。',
+    daily:'避免衝突，尋求舒適安全；情緒跟著她的反應走；存在感在別人手上。' },
+  { key:'NiceGuy', name:'Nice Guy', en:'討好型', src:'Glover + Manson', tag:'compress',
+    one:'用付出交換被愛——表面好，底層在交易，壓掉了陽性。',
+    core:'如果我對她夠好，她就會喜歡我。',
+    daily:'隱藏需求、避免衝突、間接暗示、把認可放自己之上；累積後爆發。' },
+  { key:'反應', name:'反應型男', en:'Reactive', src:'依附焦慮型', tag:'compress',
+    one:'情緒淹沒、被帶走——用強烈或控制掩蓋底層的不安。',
+    core:'我要確認你在乎我，不然我不安。',
+    daily:'容易被激怒或陷入焦慮；越怕失去越追、越控制；事後又後悔。' },
+  { key:'麻木', name:'麻木型男', en:'Numb', src:'依附逃避型', tag:'compress',
+    one:'切斷感受，用工作、遊戲、物質把自己關起來，靠不進去。',
+    core:'感覺太危險，乾脆不要感覺。',
+    daily:'說不出情緒；靠太近就撤退；關係裡像缺席的人。' },
+];
+const TYPES_FEMALE = [
+  { key:'整合', name:'整合女性', en:'Integrated', src:'Deida 陰性整合', tag:'integrate',
+    one:'真實地流動，完全活在感受裡，充滿愛也有界線。',
+    core:'我流動，因為那是我的光——不需要藏，也不會被淹沒。',
+    daily:'情緒自由流過不壓抑；直接也溫柔；能完全進入連結而不失去自己。' },
+  { key:'獨立', name:'獨立型女', en:'Independent', src:'Deida 第二層', tag:'partial',
+    one:'有自己的生活和方向，溝通直接，但把陰性的流動關起來了。',
+    core:'我有我的世界，不輕易為人改變。',
+    daily:'給的是事實不是情緒管理；有中心；但流動的門關著，靠不太進去。' },
+  { key:'依賴', name:'依賴型女', en:'Dependent', src:'Deida 第一層', tag:'compress',
+    one:'存在感完全依附對方，需要他幾乎所有的注意力和確認。',
+    core:'有他、有這段關係，我才完整。',
+    daily:'黏、需要保證；他的存在是她的全部；失去關係就崩。' },
+  { key:'NiceGirl', name:'Nice Girl', en:'好女孩', src:'Glover 對應版（陰性壓縮）', tag:'compress',
+    one:'意見消失、情緒隱藏、需求間接——把自己縮小來維持關係。',
+    core:'真實的我會讓人不喜歡，所以我配合。',
+    daily:'說「你決定」其實有想法；用貼圖和測試代替直說；快好時破壞自己的成功。' },
+  { key:'反應', name:'反應型女', en:'Reactive', src:'依附焦慮型', tag:'compress',
+    one:'情緒爆發、用情緒填滿或操縱——強烈是為了確認被在乎。',
+    core:'我要讓你知道我多痛，你才會在乎。',
+    daily:'情緒像浪；用衝突確認對方在不在；流動有時是淹沒不是真流動。' },
+  { key:'麻木', name:'麻木型女', en:'Numb', src:'依附逃避型', tag:'compress',
+    one:'切斷感受，理性運作，把心關在門後，靠不進去。',
+    core:'感受讓我受傷過，我不再打開。',
+    daily:'看起來穩但摸不到；用邏輯處理情感；被靠近會更封閉。' },
+];
+
+// ===== 36 COMBINATIONS (male row x female col) =====
+// color: rare/complex/neutral/pain/storm/block
+const ORDER_M = ['整合','獨立','依賴','NiceGuy','反應','麻木'];
+const ORDER_F = ['整合','獨立','依賴','NiceGirl','反應','麻木'];
+const COMBOS = {
+  '整合|整合': { c:'rare', label:'稀有深度', txt:'真實碰到真實，兩個都能流動也能穩住。「終於」的感覺。衝突是真實的碰撞不是崩潰撤退，說完還在、甚至更近。兩個完整的人同行，慾望不因時間消失——因為每次都是選擇，不是習慣。' },
+  '整合|獨立': { c:'neutral', label:'中性有潛力', txt:'互相尊重，各有方向。但她把陰性關起來了——有力量，流動的門卻關著，極性不夠強。他的穩定和容器是邀請她打開那扇門的機會。關鍵：她能不能在他面前放下獨立的殼。' },
+  '整合|依賴': { c:'pain', label:'容易痛苦', txt:'她被他的穩定深深吸引、感到安全，然後完全依附——需要他幾乎所有的注意力。他開始窒息，因為他要的是有自己的伴侶。出路只有一條：她開始建立自己的中心。' },
+  '整合|NiceGirl': { c:'complex', label:'複雜有可能', txt:'她第一次感覺可以放鬆，不用管理他。他不猜、直接問「你真正想要什麼」，她不習慣、開始測試——冷淡、消失、模稜兩可。他穩住不追不消失。快被看見時羞恥感說停，她可能爆發或退。他還在。時間夠長，她慢慢還原成整合女性。' },
+  '整合|反應': { c:'storm', label:'強烈不穩定', txt:'他的穩定給了她錨點，極性強。但她的流動有時是情緒淹沒而不是真流動，他的容器要很大才裝得下。她若開始整合——成為真流動而不是被帶走——能走很深；不整合，他會慢慢精疲力竭。' },
+  '整合|麻木': { c:'block', label:'靠不進去', txt:'他感覺到她曾有的深度，被吸引。但她切斷了感受，他的在場到不了她，越進入她越封閉。考驗他的容器有多大，以及她心裡有沒有一點點想打開的意願。' },
+
+  '獨立|整合': { c:'neutral', label:'中性有潛力', txt:'她真實流動，他有方向但把陰性（感受、連結）關著。她感覺得到他靠不進來的地方，能接住她的流動嗎？他若願意打開承接的能力，這個組合能深；否則她會覺得在他面前流動沒有被接住。' },
+  '獨立|獨立': { c:'neutral', label:'平行線', txt:'兩條接近平行的線。各有生活、互相尊重，但沒有人先打開、先往對方走，就停在「很好的夥伴」那裡。極性弱，穩定但缺深度。需要一個靠近的動作。' },
+  '獨立|依賴': { c:'pain', label:'容易痛苦', txt:'她依附他、要他的確認，他有方向卻不擅長承接情感需求。她要的情感連結他給不出來，她越要他越退到任務裡。失衡會慢慢累積。' },
+  '獨立|NiceGirl': { c:'pain', label:'表面運作', txt:'他有方向、她配合，看起來和諧。但他關著陰性、她藏著真實——沒有人在真正連結。表面運作，底層是兩個人各自的孤單。' },
+  '獨立|反應': { c:'storm', label:'越要越退', txt:'她情緒淹沒要連結，他關著感受退進任務。她越靠近索求，他越撤退；她的浪打在一道牆上。經典的「要—退」循環。' },
+  '獨立|麻木': { c:'block', label:'最冷的平行', txt:'兩個都把感受關起來——一個進任務，一個進牆後。表面平靜，實際是兩個各自運作的系統，沒有真正的接觸。像室友，而且都不覺得有問題。' },
+
+  '依賴|整合': { c:'pain', label:'她失去吸引', txt:'他依附她的認可，她流動但需要一個有中心的人。他的存在感放在她手上，她感覺不到那個能穩住她的容器，吸引慢慢消退。她要的是錨，不是另一個需要被穩住的人。' },
+  '依賴|獨立': { c:'pain', label:'她變成媽媽', txt:'他依賴她做決定，她有方向就接手。漸漸她在做兩個人的事，越來越像他的媽媽，作為伴侶的尊重慢慢流失。她會累，然後離開或失去極性。' },
+  '依賴|依賴': { c:'pain', label:'互相抓住', txt:'兩個都把存在感放在外在、放在對方身上。互相抓得很緊，但兩個都空——沒有人能給出對方要的安全感，因為兩個人自己都還沒有中心。' },
+  '依賴|NiceGirl': { c:'pain', label:'安靜的共依存', txt:'他需要她的確認，她需要他不要求她說真話。兩個壓縮的人互相依附，表面安穩，底層是兩個都沒有被真正看見、也都不敢先說真的。' },
+  '依賴|反應': { c:'storm', label:'抓與爆', txt:'她情緒爆發，他更慌、更黏、更求安全。他的依附餵養她的不安，她的爆發加深他的焦慮。兩個都被情緒帶走，沒有錨點。' },
+  '依賴|麻木': { c:'block', label:'追與牆', txt:'他要她給確認和保證，她切斷感受退到牆後。他越焦慮索求，她越關閉。他的需求撞在她的麻木上，兩個都更孤單。' },
+
+  'NiceGuy|整合': { c:'pain', label:'她慢慢失去尊重', txt:'她以為他的體貼是安全的。但他說的話沒有重量、意見跟著她變——她開始感覺一種奇怪的孤單：有人在旁邊，沒有人真正在那裡。她測試，他立刻同意，尊重一次次流失。她離開，或留下來主導、陰性萎縮。' },
+  'NiceGuy|獨立': { c:'pain', label:'她越來越累', txt:'她欣賞他的體貼，他欣賞她的方向。但漸漸她主導、他跟隨，她在做兩個人的事，越來越像他媽媽。她失去對他作為伴侶的尊重，最後說「我累了」。' },
+  'NiceGuy|依賴': { c:'pain', label:'互相討好', txt:'兩個都需要外在的確認。他討好她、她依附他，表面充滿付出，但沒有人說真的需求。互相填補不安，卻都填不滿——因為兩個人都還沒有自己的中心。' },
+  'NiceGuy|NiceGirl': { c:'pain', label:'安靜的痛苦', txt:'最常見的組合。他需要不會拒絕他的人，她需要不要求她說真話的人——互相保護對方的壓縮。沒有極性、沒有張力、沒有真實碰撞。最悲傷的是：兩個真實的人從來沒有見過面，他愛管理過的她，她愛管理過的他。' },
+  'NiceGuy|反應': { c:'storm', label:'失控循環', txt:'她的直接和情緒讓他不知所措，卻也被那股活力吸引。她爆發，他討好道歉；她爆完需要更多，他繼續給但默默記帳。兩個都被帶走，沒有穩定的錨。出路：他開始整合，不再討好。' },
+  'NiceGuy|麻木': { c:'block', label:'給卻接不住', txt:'他討好、付出，想換回應；她切斷感受、無感。他付出越多越想換回，她越退。一個一直給卻沒人接，一個關在門後感覺被侵入。' },
+
+  '反應|整合': { c:'storm', label:'她裝得下一陣子', txt:'他情緒被帶走、焦慮索求，她真實流動也相對穩。她能裝得下他的波動一陣子，但他若不開始穩住自己，她會累——她要的是一起流動，不是一直安撫一個被淹沒的人。' },
+  '反應|獨立': { c:'storm', label:'越追越逃', txt:'他焦慮、要確認，她有距離、不輕易給。他越追，她越退到自己的世界。經典的焦慮追、逃避退——只是這裡換成他追她逃。' },
+  '反應|依賴': { c:'storm', label:'情緒互纏', txt:'兩個都在情緒裡抓彼此——他焦慮，她依附。一個爆一個崩，互相放大不安。激烈、糾纏，但沒有人能穩住場。' },
+  '反應|NiceGirl': { c:'storm', label:'爆與縮', txt:'他情緒淹沒、爆發，她藏起真實、往內縮。他越激動，她越把自己關小；她越退，他越焦慮。兩個都沒在說真的，只是一個用爆、一個用藏。' },
+  '反應|反應': { c:'storm', label:'最激烈的對撞', txt:'兩個都被情緒帶走。愛起來轟轟烈烈，吵起來天崩地裂。沒有人是那個能穩住的容器，所以關係像兩個浪不斷對撞——強度很高，穩定度最低。' },
+  '反應|麻木': { c:'block', label:'追逃定格', txt:'他焦慮追、要連結，她切斷退、進牆後。他越追她越凍結，她越凍結他越慌。最典型的焦慮—逃避追逃舞，兩個都更受傷。' },
+
+  '麻木|整合': { c:'block', label:'她的光到不了他', txt:'她真實流動、想靠近，他切斷感受、關在牆後。她的光打在一道牆上，到不了他。她願意進入連結，但連結需要兩個人都在場——他不在。她會慢慢累。' },
+  '麻木|獨立': { c:'block', label:'最冷的平行', txt:'兩個都把感受關著，一個進牆、一個進任務。沒有衝突，因為沒有接觸。表面最「沒問題」，實際最遙遠。' },
+  '麻木|依賴': { c:'block', label:'要與退', txt:'她要他給確認和情感，他切斷退開。她越追求連結，他越退；她的需求撞在他的牆上。她得到的越少越焦慮，他感覺被逼得越緊越關。' },
+  '麻木|NiceGirl': { c:'block', label:'兩個都不在場', txt:'他無感、關著，她藏著真實、配合。沒有人說真的，也沒有人真正在那裡。安靜，但是空的——兩個缺席的人共處一室。' },
+  '麻木|反應': { c:'block', label:'凍結對爆發', txt:'她情緒爆發要反應，他凍結、更退。她越想逼出他的反應，他越關得更緊。她的火燒在冰上，兩個都絕望。' },
+  '麻木|麻木': { c:'block', label:'最深的隔離', txt:'兩個都切斷了感受。沒有衝突、沒有索求、也沒有連結——兩個缺席的人住在同一個空間。最安靜，也最孤單。' },
+};
+
+const QUIZ=[
+ {q:'如果你的成就、頭銜、收入全部消失,你還知道自己是誰嗎?',opts:[
+   {t:'會恐慌,好像我整個人就沒了',s:{依賴:2,壓縮:1}},
+   {t:'會迷失一陣子,因為我一直是「做出什麼的人」',s:{獨立:2}},
+   {t:'我還在,那些只是我做的事,不是我',s:{整合:2}}]},
+ {q:'當真實的你(想法、感受、需要)想出現時,通常會?',opts:[
+   {t:'先藏起來,看安不安全再說',s:{壓縮:2,麻木:1}},
+   {t:'看人,熟的能說,不熟的收起來',s:{整合:1,獨立:1}},
+   {t:'說出來,帶著它,就算手會抖',s:{整合:2}}]},
+ {q:'對方情緒很大、或起衝突時,你的第一反應是?',opts:[
+   {t:'趕快修復、討好,讓不舒服過去',s:{壓縮:2,依賴:1}},
+   {t:'被點燃,想講贏或反擊',s:{反應:2}},
+   {t:'關機、冷掉、不想講',s:{麻木:2}},
+   {t:'能感受到,但不被帶走,待在那裡',s:{整合:2}}]},
+ {q:'在親密關係裡,你比較像哪一種?',opts:[
+   {t:'需要對方常確認在乎我,不然會焦慮',s:{依賴:2,反應:1}},
+   {t:'對方靠太近時想要空間,會往後退',s:{麻木:2,獨立:1}},
+   {t:'我有自己的世界,但難讓人真正進來',s:{獨立:2}},
+   {t:'能靠近,也能保有自己',s:{整合:2}}]},
+ {q:'別人想給你東西——愛、稱讚、幫助——你會?',opts:[
+   {t:'想推開,覺得不值得或不習慣',s:{壓縮:1,麻木:1,依賴:1}},
+   {t:'有點不自在,但練習讓它進來',s:{整合:1}},
+   {t:'說謝謝,讓它落地,沒有不舒服',s:{整合:2}}]},
+];
+// type -> result definition (resolved by gender)
+const RESULT_DEF={
+ 整合:{m:'整合男性',f:'整合女性',pos:'整合端',
+   d:'真實出現,能流動也能穩住。你不太需要藏,也比較不會被對方的情緒帶走——這是地圖右上角的位置。',
+   move:'你的功課不是「修好自己」,是在還沒整合的關係或時刻裡,繼續穩住、繼續真實。'},
+ 獨立:{m:'獨立型男',f:'獨立型女',pos:'中間偏整合',
+   d:'你有自己的方向和中心,但傾向把感受、流動、連結的那一面關起來。有力量,但靠不太進來。',
+   move:'往整合走的一步:在安全的人面前,練習讓那扇關著的門打開一點——讓人真正進來。'},
+ 依賴:{m:'依賴型男',f:'依賴型女',pos:'壓縮端',
+   d:'你的存在感比較放在外在——對方的認可、這段關係穩不穩。對方的一個反應,可以決定你整天的狀態。',
+   move:'往整合走的一步:建立自己的中心——有自己的生活、自己的方向,讓存在感慢慢從別人手上拿回來。'},
+ 壓縮:{m:'Nice Guy',f:'Nice Girl',pos:'壓縮端',
+   d:'你傾向藏起真實的自己,用配合、討好、或不說真話來維持關係——表面好,底層在交換。',
+   move:'往整合走的一步:每次帶著「說了會不會被討厭」的恐懼,還是說一句真的。說完,對方還在,信念就鬆一點。'},
+ 反應:{m:'反應型男',f:'反應型女',pos:'壓縮端',
+   d:'你容易被情緒淹沒、被帶走——不安時會想抓住對方、確認、或爆發。強烈,但底層是怕失去。',
+   move:'往整合走的一步:情緒上來時,先找到它在身體哪裡,深呼吸,待在那裡——讓它流動,而不是衝出去。'},
+ 麻木:{m:'麻木型男',f:'麻木型女',pos:'壓縮端',
+   d:'你傾向切斷感受、把心關在門後——靠太近會想退。看起來很穩,但別人摸不到你。',
+   move:'往整合走的一步:練習說出一個你「其實有感覺但平常不會講」的東西。讓一個人,進來一點點。'},
+};
+
+// glossary
+const cardGrid=document.getElementById('cardGrid');
+function renderCards(side){
+  const arr = side==='male'?TYPES_MALE:TYPES_FEMALE;
+  cardGrid.innerHTML='';
+  arr.forEach(t=>{
+    const c=document.createElement('div');c.className='term-card';
+    c.innerHTML=`<span class="expand">+</span><span class="tag ${t.tag}">${t.tag==='compress'?'壓縮':t.tag==='partial'?'部分整合':'整合'}</span><h4>${t.name}</h4><div class="en">${t.en}</div><div class="src">來源:${t.src}</div><div class="oneliner">${t.one}</div><div class="detail"><div class="blk"><div class="lbl">核心動力</div><div class="txt">${t.core}</div></div><div class="blk"><div class="lbl">日常的樣子</div><div class="txt">${t.daily}</div></div></div>`;
+    c.addEventListener('click',()=>c.classList.toggle('open'));
+    cardGrid.appendChild(c);
+  });
+}
+renderCards('male');
+document.querySelectorAll('.gtab').forEach(tab=>tab.addEventListener('click',()=>{
+  document.querySelectorAll('.gtab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');renderCards(tab.dataset.side);
+}));
+
+// quiz
+const quiz=document.getElementById('quiz');
+let quizGender='male';
+const answers={};
+// gender selector
+const genderSel=document.createElement('div');
+genderSel.className='q-block';
+genderSel.innerHTML=`<div class="q"><span class="qn">先選</span>你的結果想用哪個版本?</div>
+  <button class="opt gsel picked" data-g="male">男性版本（整合男性 / Nice Guy …）<span class="res">結果會用男性的類型標籤</span></button>
+  <button class="opt gsel" data-g="female">女性版本（整合女性 / Nice Girl …）<span class="res">結果會用女性的類型標籤</span></button>`;
+quiz.appendChild(genderSel);
+// questions
+QUIZ.forEach((item,qi)=>{
+  const b=document.createElement('div');b.className='q-block';
+  let o='';item.opts.forEach((op,oi)=>{o+=`<button class="opt qopt" data-q="${qi}" data-o="${oi}">${op.t}</button>`;});
+  b.innerHTML=`<div class="q"><span class="qn">Q${qi+1}</span>${item.q}</div>${o}`;quiz.appendChild(b);
+});
+// button + result
+const btnWrap=document.createElement('div');
+btnWrap.innerHTML=`<button id="calcBtn" class="calc-btn" disabled>答完所有題目,看結果</button>`;
+quiz.appendChild(btnWrap);
+const verdict=document.createElement('div');verdict.className='verdict';verdict.id='verdict';
+quiz.appendChild(verdict);
+
+// gender pick
+genderSel.addEventListener('click',e=>{const g=e.target.closest('.gsel');if(!g)return;genderSel.querySelectorAll('.gsel').forEach(x=>x.classList.remove('picked'));g.classList.add('picked');quizGender=g.dataset.g;});
+// answer pick
+quiz.addEventListener('click',e=>{
+  const opt=e.target.closest('.qopt');if(!opt)return;
+  const qi=opt.dataset.q;
+  quiz.querySelectorAll(`.qopt[data-q="${qi}"]`).forEach(o=>o.classList.remove('picked'));
+  opt.classList.add('picked');
+  answers[qi]=parseInt(opt.dataset.o);
+  const btn=document.getElementById('calcBtn');
+  if(Object.keys(answers).length>=QUIZ.length){btn.disabled=false;btn.textContent='看結果 →';}
+});
+// calculate
+document.getElementById('calcBtn').addEventListener('click',()=>{
+  const score={整合:0,獨立:0,依賴:0,壓縮:0,反應:0,麻木:0};
+  Object.keys(answers).forEach(qi=>{
+    const s=QUIZ[qi].opts[answers[qi]].s;
+    Object.keys(s).forEach(k=>score[k]+=s[k]);
+  });
+  // find dominant (exclude tie ambiguity by order priority on compressed clarity)
+  let top=null,topV=-1;
+  Object.keys(score).forEach(k=>{if(score[k]>topV){topV=score[k];top=k;}});
+  const def=RESULT_DEF[top];
+  const name=quizGender==='male'?def.m:def.f;
+  const intg=score.整合;
+  const compressed=score.依賴+score.壓縮+score.反應+score.麻木;
+  let level = intg>=compressed+3 ? '你整體偏整合端——大多時候能真實也能穩住。' :
+              intg>=compressed ? '你在中間偏整合——大部分穩,某些情境會退回壓縮。' :
+              '你目前偏壓縮端——這不是壞事,是看見方向的起點。';
+  verdict.innerHTML=`<div class="vh">你最常落在</div>
+    <div class="vt" style="font-family:'Noto Serif TC',serif;font-size:26px;font-weight:700;color:var(--gold);margin-bottom:6px">${name}</div>
+    <div class="vt" style="font-size:13px;color:var(--text-faint);margin-bottom:14px">位置:${def.pos}</div>
+    <div class="vt" style="margin-bottom:14px">${def.d}</div>
+    <div class="vt" style="margin-bottom:14px">${level}</div>
+    <div class="vt" style="padding-top:14px;border-top:1px solid var(--gold-soft)"><strong>往整合走的一步:</strong>${def.move}</div>
+    <div class="vt" style="font-size:13px;color:var(--text-faint);margin-top:14px;font-style:italic">這不是定格——同一個人在不同關係裡會落在不同格子。重要的是看見方向。</div>`;
+  verdict.classList.add('show');
+  verdict.scrollIntoView({behavior:'smooth',block:'center'});
+});
+
+// matrix
+const matrix=document.getElementById('matrix');
+const MN={'整合':'整合男性','獨立':'獨立型男','依賴':'依賴型男','NiceGuy':'Nice Guy','反應':'反應型男','麻木':'麻木型男'};
+const FN={'整合':'整合女性','獨立':'獨立型女','依賴':'依賴型女','NiceGirl':'Nice Girl','反應':'反應型女','麻木':'麻木型女'};
+let h='<tr><th class="corner">♂ ＼ ♀</th>';
+ORDER_F.forEach(f=>h+=`<th class="col">${FN[f]}</th>`);h+='</tr>';
+ORDER_M.forEach(m=>{
+  h+=`<tr><th class="rowh">${MN[m]}</th>`;
+  ORDER_F.forEach(f=>{const combo=COMBOS[m+'|'+f];h+=`<td class="cell ${combo.c}" data-m="${m}" data-f="${f}"></td>`;});
+  h+='</tr>';
+});
+matrix.innerHTML=h;
+
+// modal
+const mBg=document.getElementById('modalBg'),mPair=document.getElementById('modalPair'),mLabel=document.getElementById('modalLabel'),mBody=document.getElementById('modalBody');
+matrix.addEventListener('click',e=>{const td=e.target.closest('td');if(!td)return;const m=td.dataset.m,f=td.dataset.f;const combo=COMBOS[m+'|'+f];mPair.textContent=`♂ ${MN[m]}  ×  ♀ ${FN[f]}`;mLabel.textContent=combo.label;mBody.textContent=combo.txt;mBg.classList.add('show');});
+document.getElementById('modalClose').addEventListener('click',()=>mBg.classList.remove('show'));
+mBg.addEventListener('click',e=>{if(e.target===mBg)mBg.classList.remove('show');});
+
+// reveal
+const io=new IntersectionObserver(en=>{en.forEach(x=>{if(x.isIntersecting)x.target.classList.add('in');});},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+</script>
+</body>
+</html>
